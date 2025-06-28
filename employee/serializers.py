@@ -1,19 +1,28 @@
 from rest_framework import serializers
-from .models import Manager, Intern
+from .models import Manager, Intern, Address
+
+class AddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        fields = ['id', 'street', 'city', 'state', 'postal_code', 'country']
 
 class ManagerSerializer(serializers.ModelSerializer):
+    address_details = AddressSerializer(source='address', read_only=True)
+    
     class Meta:
         model = Manager
-        fields = ['id', 'first_name', 'last_name', 'email', 'phone', 'date_joined', 'department']
+        fields = ['id', 'first_name', 'last_name', 'email', 'phone', 'date_joined', 
+                'department', 'address', 'address_details']
         read_only_fields = ['has_company_card']
 
 class InternSerializer(serializers.ModelSerializer):
     mentor_details = serializers.SerializerMethodField()
+    address_details = AddressSerializer(source='address', read_only=True)
     
     class Meta:
         model = Intern
         fields = ['id', 'first_name', 'last_name', 'email', 'phone', 'date_joined', 
-                 'mentor', 'mentor_details', 'internship_end']
+                 'mentor', 'mentor_details', 'internship_end', 'address', 'address_details']
     
     def get_mentor_details(self, obj):
         if obj.mentor:
@@ -29,6 +38,7 @@ class StaffRoleSerializer(serializers.Serializer):
     name = serializers.CharField()
     role = serializers.CharField()
     type = serializers.CharField()
+    address = AddressSerializer()
     
     def to_representation(self, instance):
         if isinstance(instance, Manager):
@@ -41,5 +51,8 @@ class StaffRoleSerializer(serializers.Serializer):
         data = serializer.data
         data['role'] = instance.get_role()
         data['type'] = instance.__class__.__name__.lower()
+        if instance.address:
+            data['address'] = AddressSerializer(instance.address).data
+        else:
+            data['address'] = None
         return data
-
